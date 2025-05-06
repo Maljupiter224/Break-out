@@ -91,13 +91,28 @@ class Game:
             print("❌ You don't have that item.")
             return
         room = self.rooms[self.current_room]
+        
+        if item == "crowbar":
+            if self.current_room == "Bathroom":
+                print("💪 You force open the Master Bedroom door with the crowbar!")
+                room.exits["east"] = "Master Bedroom"
+                self.rooms["Master Bedroom"].exits["west"] = "Bathroom"
+                self.time_left -= 3
+            if self.current_room == "kitchen":
+                print("💪 You force open the Master Bedroom door with the crowbar!")
+                room.exits["south"] = "Master Bedroom"
+                self.rooms["Master Bedroom"].exits["north"] = "kitchen"
+                self.time_left -= 3
+            else:
+                print("❌ You can't use the crowbar here.")
+                
         if item == "bobby pin":
             for container, contents in room.containers.items():
                 if "golden chest" in contents:
                     print("🔐 You attempt to pick the lock on the golden chest using your bobby pin...")
-                    correct_pattern = "nness"
-                    for attempt in range(3):
-                        guess = input("Enter the 5-direction code (e.g., neswe): ").strip().lower()
+                    correct_pattern = "new"
+                    for attempt in range(5):
+                        guess = input("Enter the 5-direction code (e.g., eee): ").strip().lower()
                         if guess == correct_pattern:
                             print("✅ Click! The lock opens. Inside the golden chest, you find gold bars and a laptop!")
                             contents.remove("golden chest")
@@ -106,18 +121,28 @@ class Game:
                             return
                         else:
                             self.time_left -= 5
-                            print("❌ Wrong sequence! You waste 5 minutes.")
+                            print("❌ Wrong sequence! You waste 3 minutes.")
+                    print("💥 You failed to pick the lock.")
+                    return
+                if "wooden chest" in contents:
+                    print("🔐 You attempt to pick the lock on the wooden chest using your bobby pin...")
+                    correct_pattern = "wss"
+                    for attempt in range(5):
+                        guess = input("Enter the 3-direction code (e.g., nes): ").strip().lower()
+                        if guess == correct_pattern:
+                            print("✅ Click! The lock opens. Inside the wooden chest, you find a Diamond Necklace!")
+                            contents.remove("wooden chest")
+                            contents.append("Diamond Necklace")
+                            self.time_left -= 5
+                            return
+                        else:
+                            self.time_left -= 5
+                            print("❌ Wrong sequence! You waste 3 minutes.")
                     print("💥 You failed to pick the lock.")
                     return
             print("❌ There's nothing here to pick with the bobby pin.")
         elif item == "crowbar":
-            for container, contents in room.containers.items():
-                if "wooden chest" in contents:
-                    print("💪 You pry open the wooden chest and find a wallet.")
-                    contents.remove("wooden chest")
-                    contents.append("wallet")
-                    self.time_left -= 2
-                    return
+            
         elif item == "key":
             if self.current_room == "Exit":
                 print("🔓 You unlock the front door and escape with your loot!")
