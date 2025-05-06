@@ -102,6 +102,7 @@ class Game:
                             print("✅ Click! The lock opens. Inside the golden chest, you find gold bars and a laptop!")
                             contents.remove("golden chest")
                             contents.extend(["gold bars", "laptop"])
+                            self.time_left -= 5
                             return
                         else:
                             self.time_left -= 5
