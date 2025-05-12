@@ -1,180 +1,240 @@
+class Item:
+    def __init__(self, name, value=0, size=1, usable=False, description=""):
+        self.name = name
+        self.value = value
+        self.size = size
+        self.usable = usable
+        self.description = description
+
 class Room:
-    def __init__(self, name, description, exits, containers=None):
+    def __init__(self, name, description, exits=None, containers=None):
         self.name = name
         self.description = description
-        self.exits = exits  # dict like {'north': 'Garage'}
-        self.containers = containers or {}  # {'bed': ['item1'], 'cabinet': ['item2']}
+        self.exits = exits if exits else {}
+        self.containers = containers if containers else {}
 
 class Game:
     def __init__(self):
-        self.time_left = 60  # minutes
+        self.time_left = 60
         self.inventory = []
-        self.max_items = 10
+        self.max_inventory_slots = 10
         self.current_room = "Bedroom #2"
         self.rooms = self.create_rooms()
-    
+        self.master_bedroom_unlocked = False
+        self.golden_chest_opened = False
+        self.unlock_code = "nes"
+        self.safe_code = "4729"
+
+    def show_help(self):
+        print("""
+        📖 GAME HELP
+
+        🕵️ STORY: 
+        You are a professional thief, known only as "Shadow". After weeks of surveillance, 
+        you’ve chosen the perfect time to strike — the owners of this wealthy home leave 
+        for an exact 1-hour walk each evening. You have 60 minutes to loot as much as you 
+        can and escape before they return.
+
+        🎯 OBJECTIVE: - 
+        Explore the house, steal valuable items, and escape through the front door before 
+        time runs out. Your bag has a limited capacity — 10 slots. Some items take more 
+        than 1 slot (like the laptop or gold bars). Plan wisely.
+
+        🕹️ CONTROLS:
+        - Movement: north, south, east, west (or n, s, e, w)
+        - look [container]      : View what’s inside a specific place
+        - take [item]           : Take an item from a container
+        - use [item]            : Use usable items (e.g., crowbar, key)
+        - inventory             : View current items and slots used
+        - help                  : View this help screen
+        - quit                  : End the game
+
+        💡 TIPS:
+        - Use the crowbar in the bathroom to unlock the Master Bedroom.
+        - Use the bobby pin to pick locks — enter the correct 3-letter direction code.
+        - Use the key to unlock the front door and escape.
+
+        Good luck, Shadow.
+            """) # Rajat did story, Shlok did objectives, Adish did controls and the tips section was together
+
+
+    def create_item(self, name, value=0, size=1, usable=False, description=""):
+        return Item(name, value, size, usable, description)
+
     def create_rooms(self):
+        i = self.create_item
         return {
-            "Garage": Room("Garage", "A dusty garage with tools and a cabinet.",
-                           {"south": "Study"},
-                           {"cabinet": ["crowbar"]}),
-            "Study": Room("Study", "A quiet room with a desk and drawers.",
-                          {"north": "Garage", "east": "Living Room"},
-                          {"drawers": ["wallet"]}),
-            "Bedroom #2": Room("Bedroom #2", "A cozy bedroom with a bed and drawers.",
-                               {"south": "Kitchen"},
-                               {"bed": ["phone"], "drawers": ["ruby ring"]}),
-            "Living Room": Room("Living Room", "A well-decorated living room.",
-                                {"north": "Exit", "east": "Kitchen", "south": "Bathroom", "west": "Study"},
-                                {"cabinet": ["painting"]}),
-            "Kitchen": Room("Kitchen", "A clean kitchen with a fridge and cabinets.",
-                            {"north": "Bedroom #2", "south": "Master Bedroom", "west": "Living Room"},
-                            {"cabinet": ["bobby pin", "golden monkey statue"]}),
-            "Laundry": Room("Laundry", "A small laundry with a cabinet.",
-                            {"east": "Bathroom"},
-                            {"cabinet": ["key"]}),
-            "Bathroom": Room("Bathroom", "A tiled bathroom with a cabinet.",
-                             {"north": "Living Room", "east": "Master Bedroom", "west": "Laundry"},
-                             {"cabinet": ["diamond necklace"]}),
-            "Master Bedroom": Room("Master Bedroom", "A luxurious bedroom with a golden chest.",
-                                   {"north": "Kitchen", "west": "Bathroom"},
-                                   {"bed": [], "drawers": [], "cabinet": ["golden chest"]}),
-            "Exit": Room("Exit", "The front door. You can leave now if you're done.",
-                         {"south": "Living Room"}),
+            "Garage": Room("Garage", "A dusty garage.",
+                {"south": "Study"},
+                {
+                    "behind toolbox": [i("wooden chest")],
+                    "garage storage": [i("rusty broken wrench", 0)]
+                }),
+            "Study": Room("Study", "A quiet study room.",
+                {"north": "Garage", "east": "Living Room"},
+                {
+                    "study table": [i("pencil case", 0)],
+                    "drawer": [i("laptop", 2100, 2)],
+                    "bookshelf": []
+                }),
+            "Bedroom #2": Room("Bedroom #2", "Where your heist begins.",
+                {"south": "Kitchen"},
+                {
+                    "bedside table top": [i("bobby pin", 0, 1, True)],
+                    "bedside table inside": [],
+                    "under the bed": [],
+                    "mirror": []
+                }),
+            "Kitchen": Room("Kitchen", "A clean modern kitchen.",
+                {"north": "Bedroom #2", "south": "Master Bedroom", "west": "Living Room"},
+                {
+                    "cabinet": [i("cutlery set", 40), i("monkey statue", 200)]
+                }),
+            "Living Room": Room("Living Room", "The heart of the house.",
+                {"north": "Exit", "east": "Kitchen", "south": "Bathroom", "west": "Study"},
+                {
+                    "inside sofa": [i("phone", 800)],
+                    "wall": [i("painting", 450)],
+                    "digital clock": []
+                }),
+            "Laundry": Room("Laundry", "A damp laundry room.",
+                {"east": "Bathroom"},
+                {
+                    "top shelves": [],
+                    "clothes": [i("wallet", 100)],
+                    "bottom shelves": [i("crowbar", 0, 1, True)]
+                }),
+            "Bathroom": Room("Bathroom", "Clean and minimalist.",
+                {"north": "Living Room", "west": "Laundry"},
+                {
+                    "inside toilet": [],
+                    "in the sink": [i("ruby ring", 1100)],
+                    "sink cabinet": [i("key", 0, 1, True)]
+                }),
+            "Master Bedroom": Room("Master Bedroom", "A luxurious locked room.",
+                {},  # Exits added after using crowbar
+                {
+                    "bedside table (on top)": [],
+                    "bedside table (inside)": [i("button", 0)],
+                    "mirror": [i("golden chest", 0, 1, True)],
+                    "wardrobe": [i("diamond necklace", 7000)]
+                }),
+            "Exit": Room("Exit", "The front door. Escape when you're done.",
+                {"south": "Living Room"}
+            )
         }
+
+    def inventory_space(self):
+        return sum(item.size for item in self.inventory)
 
     def show_status(self):
         room = self.rooms[self.current_room]
-        print("\n📍 You are in the", self.current_room + ".")
+        print(f"\n📍 You are in the {self.current_room}.")
         print(room.description)
+        print("")
         print("🚪 Exits:", ', '.join(room.exits.keys()))
-        print("👀 What you can see:", ', '.join(room.containers.keys()) or "Nothing")
+        print("")
+        print("🗄️ Places to search:", ', '.join(room.containers.keys()))
+        print("")
         print(f"⏳ Time left: {self.time_left} minutes")
+        print(f"🎒 Inventory: {self.inventory_space()}/{self.max_inventory_slots} slots used")
 
     def move(self, direction):
         room = self.rooms[self.current_room]
         if direction in room.exits:
-            self.current_room = room.exits[direction]
+            destination = room.exits[direction]
+            if destination == "Master Bedroom" and not self.master_bedroom_unlocked:
+                print("🚪 The Master Bedroom is locked. Use a crowbar to break in.")
+                return
+            self.current_room = destination
             self.time_left -= 1
         else:
             print("❌ You can't go that way.")
 
-    def look(self, container):
+    def look(self, location):
         room = self.rooms[self.current_room]
-        if container in room.containers:
-            items = room.containers[container]
-            if items:
-                print(f"🔍 Inside the {container}, you find: {', '.join(items)}")
-                self.time_left -= 1
+        if location in room.containers:
+            contents = room.containers[location]
+            if contents:
+                print(f"🔍 Inside {location}, you find:")
+                for item in contents:
+                    print(f" - {item.name} (${item.value})")
             else:
-                print(f"🔍 The {container} is empty.")
-                self.time_left -= 1
+                print(f"🔍 Nothing found in {location}.")
         else:
-            print("❌ No such container here.")
+            print("❌ There's nothing like that here.")
 
-    def take(self, item):
-        if len(self.inventory) >= self.max_items:
-            print("❌ You can't carry any more items.")
-            return
+    def take(self, item_name):
         room = self.rooms[self.current_room]
-        for container, items in room.containers.items():
-            if item in items:
-                self.inventory.append(item)
-                items.remove(item)
-                print(f"✅ You took the {item}.")
-                self.time_left -= 1
-                return
+        for location, items in room.containers.items():
+            for item in items:
+                if item.name.lower() == item_name.lower():
+                    if self.inventory_space() + item.size > self.max_inventory_slots:
+                        print("🎒 Not enough space in your bag.")
+                        return
+                    self.inventory.append(item)
+                    items.remove(item)
+                    print(f"✅ You took {item.name} (${item.value})")
+                    self.time_left -= 1
+                    return
         print("❌ That item isn't here.")
 
-    def use(self, item):
-        if item not in self.inventory:
-            print("❌ You don't have that item.")
+    def use(self, item_name):
+        item = next((i for i in self.inventory if i.name.lower() == item_name.lower()), None)
+        if not item or not item.usable:
+            print("❌ You can't use that.")
             return
-        room = self.rooms[self.current_room]
-        
-        if item == "crowbar":
-            if self.current_room == "Bathroom":
-                print("💪 You force open the Master Bedroom door with the crowbar!")
-                room.exits["east"] = "Master Bedroom"
-                self.rooms["Master Bedroom"].exits["west"] = "Bathroom"
-                self.time_left -= 3
-            if self.current_room == "kitchen":
-                print("💪 You force open the Master Bedroom door with the crowbar!")
-                room.exits["south"] = "Master Bedroom"
-                self.rooms["Master Bedroom"].exits["north"] = "kitchen"
-                self.time_left -= 3
-            else:
-                print("❌ You can't use the crowbar here.")
-                
-        if item == "bobby pin":
-            for container, contents in room.containers.items():
-                if "golden chest" in contents:
-                    print("🔐 You attempt to pick the lock on the golden chest using your bobby pin...")
-                    correct_pattern = "new"
-                    for attempt in range(5):
-                        guess = input("Enter the 5-direction code (e.g., eee): ").strip().lower()
-                        if guess == correct_pattern:
-                            print("✅ Click! The lock opens. Inside the golden chest, you find gold bars and a laptop!")
-                            contents.remove("golden chest")
-                            contents.extend(["gold bars", "laptop"])
-                            self.time_left -= 5
-                            return
-                        else:
-                            self.time_left -= 5
-                            print("❌ Wrong sequence! You waste 3 minutes.")
-                    print("💥 You failed to pick the lock.")
-                    return
-                if "wooden chest" in contents:
-                    print("🔐 You attempt to pick the lock on the wooden chest using your bobby pin...")
-                    correct_pattern = "wss"
-                    for attempt in range(5):
-                        guess = input("Enter the 3-direction code (e.g., nes): ").strip().lower()
-                        if guess == correct_pattern:
-                            print("✅ Click! The lock opens. Inside the wooden chest, you find a Diamond Necklace!")
-                            contents.remove("wooden chest")
-                            contents.append("Diamond Necklace")
-                            self.time_left -= 5
-                            return
-                        else:
-                            self.time_left -= 5
-                            print("❌ Wrong sequence! You waste 3 minutes.")
-                    print("💥 You failed to pick the lock.")
-                    return
-            print("❌ There's nothing here to pick with the bobby pin.")
-        elif item == "crowbar":
-            
-        elif item == "key":
-            if self.current_room == "Exit":
-                print("🔓 You unlock the front door and escape with your loot!")
-                self.end_game()
-                return
-            else:
-                print("❌ Nothing to unlock here with a key.")
-        else:
-            print("❌ You can't use that here.")
 
+        if item.name.lower() == "crowbar" and self.current_room == "Bathroom":
+            print("💪 You break open the Master Bedroom door with the crowbar!")
+            self.master_bedroom_unlocked = True
+            self.rooms["Bathroom"].exits["east"] = "Master Bedroom"
+            self.rooms["Kitchen"].exits["south"] = "Master Bedroom"
+            self.rooms["Master Bedroom"].exits["west"] = "Bathroom"
+            self.rooms["Master Bedroom"].exits["north"] = "Kitchen"
+            self.time_left -= 3
+        elif item.name.lower() == "bobby pin":
+            print("🔐 Attempting to pick the lock...")
+            guess = input("Enter 3-letter code (e.g. nes): ").strip().lower()
+            if guess == self.unlock_code:
+                print("✅ Chest unlocked!")
+                chest = Item("gold bars", 25000, 3)
+                self.rooms[self.current_room].containers["mirror"].append(chest)
+                self.golden_chest_opened = True
+            else:
+                print("❌ Incorrect code. You lose 5 minutes.")
+                self.time_left -= 5
+        elif item.name.lower() == "key" and self.current_room == "Exit":
+            print("🔓 You unlock the front door and escape!")
+            self.end_game()
+        else:
+            print("❌ That item can't be used here.")
 
     def show_inventory(self):
-        print("🎒 Inventory:", ', '.join(self.inventory) or "Empty")
+        print("🎒 Inventory:")
+        for item in self.inventory:
+            print(f" - {item.name} (${item.value}, size: {item.size})")
+        print(f"Total value: ${sum(i.value for i in self.inventory)}")
 
     def end_game(self):
-        print("\n💰 You escaped with the following items:")
+        print("\n🏁 You escaped with:")
+        total_value = 0
         for item in self.inventory:
-            print(f" - {item}")
+            print(f" - {item.name} (${item.value})")
+            total_value += item.value
+        print(f"\n💸 Total loot value: ${total_value}")
         print(f"⏳ Time remaining: {self.time_left} minutes")
-        print("🏁 Game Over!")
-        exit()
+        print("🛑 Game Over!")
 
     def play(self):
-        print("💀 You're a thief. Steal as much as you can before the owners return.")
-        print("🏃‍♂️ Commands: n/s/e/w or north/south/east/west, look [container], take [item], use [item], inventory, quit")
-
+        print("💀 You're 'Shadow' the thief. You have 60 minutes to loot and escape.")
+        print("Commands: n/s/e/w or full direction, look [container], take [item], use [item], inventory, help, quit")
         while self.time_left > 0:
             self.show_status()
             command = input("> ").strip().lower()
-            direction_map = {"n": "north", "s": "south", "e": "east", "w": "west"}
-            if command in direction_map:
-                self.move(direction_map[command])
+            dirs = {"n": "north", "s": "south", "e": "east", "w": "west"}
+            if command in dirs:
+                self.move(dirs[command])
             elif command in ["north", "south", "east", "west"]:
                 self.move(command)
             elif command.startswith("look "):
@@ -185,17 +245,17 @@ class Game:
                 self.use(command.split(" ", 1)[1])
             elif command == "inventory":
                 self.show_inventory()
+            elif command == "help":
+                self.show_help()
             elif command == "quit":
-                print("👋 You have chosen to get caught by the owner. Good Bye.")
+                print("👋 You left the house.")
                 break
             else:
-                print("❓ Unknown command.")
+                print("❓ Invalid command.")
         else:
-            print("⏰ Time's up! The owners are back!")
+            print("⏰ Time's up! The owners are home!")
             self.end_game()
 
-# Run the game
 if __name__ == "__main__":
     game = Game()
     game.play()
-#trial
