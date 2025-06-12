@@ -379,7 +379,7 @@ class Player:
         print("You need to enter the correct 3-letter combination without repeats.")
         print("Hint: Check the painting in the Living Room for clues.")
         
-        guess = input(f"\nEnter combination (e.g. SEW): ").upper()
+        guess = input(f"\nEnter combination (e.g. SEW): ").strip().upper()
             
         if len(guess) != 3 or any(c not in 'NSEW' for c in guess):
             print("Invalid input. Use only N, S, E, W with no repeats.")
@@ -458,10 +458,10 @@ class Player:
         "Chosen by fate, with wand in hand," 
         "Who is the boy that made a stand?\"")
         
-        answer = input("Your answer: ").lower()
+        answer = input("Your answer: ").strip().lower()
         self.time_left -= 2
         if "harry potter" in answer:
-            print("Correct! The answer is a book. Maybe you should check the bookshelf.")
+            print("Correct! The answer is a Harry Potter. Maybe you should search the bookshelf.")
             self.riddle = True
         else:
             print("That doesn't seem right. Keep thinking.")
@@ -469,7 +469,7 @@ class Player:
     
     def solve_bookshelf(self): # Done by Rajat
         print("You see a collection of books. One title catches your eye: 'Harry Potter'")
-        action = input("Take the Harry Potter book? (yes/no): ").lower()
+        action = input("Take the Harry Potter book? (yes/no): ").strip().lower()
         if action == "yes":
             print("As you pull the book, you hear a click! A secret compartment opens.")
             designer_handbag = Item("Designer Handbag", "A luxury handbag worth $3000", 3000)
@@ -483,7 +483,7 @@ class Player:
         print("You search inside the bedside table and find a fake bottom!")
         print("You push on it and it opens.")
         print("Underneath it, there's a small button.")
-        action = input("Press the button? (yes/no): ").lower()
+        action = input("Press the button? (yes/no): ").strip().lower()
         if action == "yes":
             self.solved_puzzles.add("button_pressed")
             print("You hear a click! The mirror in the room seems different now.")
@@ -501,7 +501,7 @@ class Player:
         
         while self.time_left > 0:
             try:
-                code = input("Enter 4-digit code (or 'quit' to cancel): ")
+                code = input("Enter 4-digit code (or 'quit' to cancel): ").strip()
                 
                 if code.lower() == 'quit':
                     print("You stop trying to open the safe.")
