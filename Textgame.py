@@ -48,6 +48,8 @@ class Player:
         self.riddle = False
         self.secret_unlocked = False
         self.game_start_time = None
+        self.red_rune_placed = False
+        self.blue_rune_placed = False
 
     def inventory_slots(self): # Done by Rajat
         return sum(item.slots for item in self.inventory)
@@ -99,17 +101,18 @@ class Player:
         container_found = None
 
         for container in self.location.containers:
-            if container.lower() == container_name:
+            if container.lower().strip().replace(' ','') == container_name.lower().strip().replace(' ',''):
                 container_found = container
                 break
-
-        if not container_found:
-            print("That container doesn't exist here.")
-            return
+        
+        if container_found:
+            items = self.location.containers[container_found]
+        else:
+            print(f"There is no {container_name} here.")
 
         self.time_left -= 1
         
-        if container_name.lower() == "mirror" and self.location.name == "Master Bedroom":
+        if container_name.replace(' ','') == "mirror" and self.location.name == "Master Bedroom":
             if "button_pressed" in self.solved_puzzles:
                 print("The mirror slides open, revealing a ladder to the basement!")
                 basement = self.location.get_room_in_direction('down')
@@ -120,50 +123,56 @@ class Player:
                 print("The mirror looks funny, but you can't see anything special about it.")
             return
         
-        if container_found.lower() == "wooden chest" and self.location.name.lower() == "garage":
+
+        if container_name.replace(' ','') == "woodenchest" and self.location.name.lower() == "garage":
+            if "lockpick_solved" in self.solved_puzzles:
+                print("The wooden chest is unlocked.")
+                if "key" in self.location.item.lower():
+                    print("The key to the master bedroom is still here")
             print("The wooden chest seems locked. Maybe there is an item that can be used to unlock the chest.")
             print("Hint: You need a bobby pin")
+            print("If you have a bobby pin type: use bobby pin")
             return
     
         
-        if container_name.lower() == "bedside table (inside)" and self.location.name == "Master Bedroom":
+        if container_name.replace(' ','') == "bedsidetableinside" and self.location.name == "Master Bedroom":
             self.solve_button()
             return
         
-        if container_name.lower() == "wardrobe" and self.location.name == "Bedroom #2":
+        if container_name.replace(' ','') == "wardrobe" and self.location.name == "Bedroom #2":
             self.solve_riddle()
             return
         
-        if container_name.lower() == "bookshelf" and self.location.name == "Bedroom #2":
+        if container_name.replace(' ','') == "bookshelf" and self.location.name == "Bedroom #2":
             if self.riddle:
                 self.solve_bookshelf()
             else:
                 print("You find nothing interesting.")
             return
         
-        if container_name.lower() == "oven" and self.location.name == "Kitchen": # Done by Shlok
+        if container_name.replace(' ','') == "oven" and self.location.name == "Kitchen": # Done by Shlok
             self.solve_oven()
             return
         
-        if container_name.lower() == "painting" and self.location.name == "Living Room":
+        if container_name.replace(' ','') == "painting" and self.location.name == "Living Room":
             print("The painting seems to be pretty interesting wiht 3 directions on the compass labelled N S E clockwise. ")
             return
         
-        if container_name.lower() == "digital clock" and self.location.name == "Living Room":
+        if container_name.replace(' ','') == "digitalclock" and self.location.name == "Living Room":
             print("The digital clock is stuck displaying: 08:57")
             print("This might be useful for something...")
             return
         
-        if container_name.lower() == "ancient statue" and self.location.name == "Basement":
+        if container_name.replace(' ','') == "ancientstatue" and self.location.name == "Basement":
             self.solve_basement_puzzles()
             return
         
-        if container_name.lower() == "wardrobe" and self.location.name == "Master Bedroom":
+        if container_name.replace(' ','') == "wardrobe" and self.location.name == "Master Bedroom":
             print("You find a mini safe inside the wardrobe!")
             self.solve_safe()
             return
         
-        if container_name.lower() == "cracked wall" and self.location.name == "Basement":
+        if container_name.replace(' ','') == "crackedwall" and self.location.name == "Basement":
             if "runes_placed" not in self.solved_puzzles:
                 print("The wall has deep cracks, but nothing seems special yet.")
                 print("Maybe activating something will reveal more...")
@@ -175,10 +184,10 @@ class Player:
             
             # Add weak wall dynamically
             if "weak wall" not in self.location.containers:
-                self.location.containers["weak wall"] = []
+                self.location.containers["weakwall"] = []
             return
 
-        if container_name.lower() == "weak wall" and self.location.name == "Basement":
+        if container_name.replace(' ','') == "weakwall" and self.location.name == "Basement":
             print("You break through the weak spot, revealing a hidden lever!")
             print("It's too far to reach with your hands...")
             print("You need something long to flick the lever.")
@@ -186,57 +195,71 @@ class Player:
             return
 
         # Default container search
-        items = self.location.containers[container_found]
-        if items:
+        items = self.location.containers.get(container_found, [])
+        visible_items = [item for item in items if not item.hidden]
+
+        if visible_items:
             print(f"\nSearching {container_found}:")
-            for item in items:
-                if not item.hidden:
-                    print(f"- {item.name}: {item.description}")
+            for item in visible_items:
+                print(f"- {item.name}: {item.description}")
         else:
-            print(f"You search the {container_found} but find nothing of interest.")
+            print(f"You search the {container_found} but its empty.")
 
 
 #=================================================================================================================================#
 
 # take function to take items you find from containers
 
-    def take(self, item_name): # Done by Adish, edited by Shlok
+    def take(self, item_name):
         if self.time_left <= 0:
             self.end_game(False)
             return
 
+        item_name = item_name.lower()
         item_found = None
+        found_in_room = False
+        found_in_container = None
+
+        # First, check items directly in the room
         for item in self.location.items:
-            if item.name.lower() == item_name.lower() and not item.hidden:
+            if item.name.lower() == item_name and not item.hidden:
                 item_found = item
+                found_in_room = True
                 break
-        
+
+        # Then, check items inside containers
         if not item_found:
             for container_name, items in self.location.containers.items():
-                for item in items[:]:  # Iterate over a copy to allow removal
-                    if item.name.lower() == item_name.lower() and not item.hidden:
+                for item in items:
+                    if item.name.lower() == item_name and not item.hidden:
                         item_found = item
-                        items.remove(item)  # Remove from container
+                        found_in_container = container_name
                         break
                 if item_found:
                     break
-                
+
         if not item_found:
-            print("That item isn't here or is hidden.")
+            print("That item isn’t here or is hidden.")
             return
-        
+
+        # Add to inventory if there is space
         if self.can_carry(item_found):
             self.inventory.append(item_found)
-            self.location.items.remove(item_found)
-            self.time_left -= 1
+
+            if found_in_room:
+                self.location.items.remove(item_found)
+            elif found_in_container:
+                self.location.containers[found_in_container].remove(item_found)
+
             print(f"You took the {item_found.name}.")
-            
-            if item_found.name == "Backpack":
+            self.time_left -= 1
+
+            # Special item logic: Backpack
+            if item_found.name.lower() == "backpack":
                 self.max_slots += 10
                 self.has_backpack = True
                 print("Your inventory capacity increased by 10 slots!")
-        else:
-            print("Not enough space in your inventory.")
+
 
 #=================================================================================================================================#
 
@@ -312,7 +335,7 @@ class Player:
         
         self.time_left -= 1
         
-        if item_found.name == "Crowbar" and self.location.name == "Master Bedroom":
+        if item_found.name.replace(' ','') == "Crowbar" and self.location.name == "Master Bedroom":
             if not self.location.locked:
                 print("The door is already unlocked.")
                 return
@@ -323,7 +346,7 @@ class Player:
             print("You tried to force your way to the master bedroom but unfortunately it didnt work and it wasted time.")
             return
         
-        if item_found.name == "Key" and (self.location.name == "Kitchen" or self.location.name == "Bathroom"):
+        if item_found.name.replace(' ','') == "Key" and (self.location.name == "Kitchen" or self.location.name == "Bathroom"):
             master_bedroom = None
             # Find the Master Bedroom connection
             for direction, room in self.location.exits.items():
@@ -344,20 +367,30 @@ class Player:
                 print("There's no Master Bedroom door to unlock here.")
                 return
         
-        if item_found.name == "Silver Key" and self.location.name == "Exit":
+        if item_found.name.replace(' ','') == "SilverKey" and self.location.name == "Exit":
             print("You try the key in the front door... it doesnt works! You fell for the trap")
             self.location.locked = True
             self.time_left -= 2
             return
         
-        if item_found.name == "Bobby Pin" and self.location.name == "Garage":
+        if item_found.name.replace(' ','') == "BobbyPin" and self.location.name == "Garage":
             self.solve_lockpick()
             return
         
-        if item_found.name in ["Red Rune", "Blue Rune"] and self.location.name == "Basement":
+        if item_found.name.replace(' ','') == "RedRune" and self.location.name == "Basement":
+            print(f"You place the {item_found.name.replace(' ','')} in the statue's hand.")
+            self.inventory.remove(item_found)
+            self.location.items.append(item_found)
+            self.red_rune_placed = True
+            self.time_left -= 1
+            self.solve_basement_puzzles()  # Check puzzle progress
+            return
+        
+        if item_found.name.replace(' ','') == "BlueRune" and self.location.name == "Basement":
             print(f"You place the {item_found.name} in the statue's hand.")
             self.inventory.remove(item_found)
             self.location.items.append(item_found)
+            self.blue_rune_placed = True
             self.time_left -= 1
             self.solve_basement_puzzles()  # Check puzzle progress
             return
@@ -461,7 +494,7 @@ class Player:
         answer = input("Your answer: ").strip().lower()
         self.time_left -= 2
         if "harry potter" in answer:
-            print("Correct! The answer is a Harry Potter. Maybe you should search the bookshelf.")
+            print("Correct! The answer is Harry Potter. Maybe you should search the bookshelf.")
             self.riddle = True
         else:
             print("That doesn't seem right. Keep thinking.")
@@ -536,24 +569,23 @@ class Player:
         
         # Stage 1: Check if both runes are placed
         if "runes_placed" not in self.solved_puzzles:
-            red_rune_placed = False
-            blue_rune_placed = False
-            
-            if not (red_rune_placed and blue_rune_placed):
+            if self.red_rune_placed and self.blue_rune_placed:
+                print("\nAs you place the final rune, the statue's eyes begin to glow!")
+                print("It speaks: 'To escape this room, break where the light is dim,'")
+                print("'Find the tool to reach beyond, and freedom shall be granted to him.'")
+                self.solved_puzzles.add("runes_placed")
+                self.location.containers["weak wall"] = []
+                return
+            else:
                 print("An ancient statue stands in the center with outstretched hands.")
                 print("You need to place both the Red Rune and Blue Rune in its hands.")
                 return
-             
-            print("\nAs you place the final rune, the statue's eyes begin to glow!")
-            print("It speaks: 'To escape this room, break where the light is dim,'")
-            print("'Find the tool to reach beyond, and freedom shall be granted to him.'")
-            self.solved_puzzles.add("runes_placed")
-            self.location.containers["weak wall"] = []  # Add weak wall to searchable areas
-            return
-        
+            
         # Stage 2: Check if weak wall has been searched
-        if "wall_searched" in self.solved_puzzles:
-            if "Sword" in [item.name for item in self.inventory]:
+        if "wall_searched" in self.solved_puzzles and "basement_solved" not in self.solved_puzzles:
+            has_sword = any(item.name.lower() == "sword" for item in self.inventory)
+
+            if has_sword:
                 print("You use the Sword to flip the lever!")
                 print("The statue crumbles, revealing a Golden Key!")
                 print("A ladder suddenly drops from the ceiling, leading back up!")
@@ -561,16 +593,27 @@ class Player:
                 # Add exit to Master Bedroom
                 master_bedroom = None
                 for room in self.location.exits.values():
-                    if room.name == "Master Bedroom":
+                    if room.name.lower() == "master bedroom":
                         master_bedroom = room
                         break
 
                 if master_bedroom:
                     self.location.connect("up", master_bedroom)  # Add the exit
 
+                # Add Golden Key
                 key = Item("Golden Key", "Unlocks the front door", 0, 1, True)
                 self.location.items.append(key)
+
+                # Optional: remove sword from inventory to prevent reuse
+                for item in self.inventory:
+                    if item.name.lower() == "sword":
+                        self.inventory.remove(item)
+                        break
+
                 self.solved_puzzles.add("basement_solved")
+            else:
+                print("You see the lever, but it's out of reach.")
+                print("Maybe you need something long, like a sword.")
 
 
 #=================================================================================================================================#
@@ -703,34 +746,6 @@ def create_world(): # Done by Shlok and Adish
     
     # Add items to their respective rooms - Done by Shlok and Adish
     # It uses the class item which has the attributes name, description, value, inventory slots and if it can be used in a puzzle.
-    bedroom2.items = [
-        Item("Bobby Pin", "Could be useful for picking locks", 0, 1, True)
-    ]
-    
-    kitchen.items = [
-        Item("Cutlery Set", "Silver cutlery, not very valuable", 40, 1),
-        Item("Old Food", "Expired and smelly", 0, 1)
-    ]
-    
-    living_room.items = [
-        Item("Painting", "A small but valuable artwork with the direction order of NSE", 450, 2),
-        Item("Phone", "An old smartphone", 800, 1)
-    ]
-    
-    bathroom.items = [
-        Item("Ruby Ring", "A beautiful gemstone ring", 1100, 1),
-        Item("Silver Key", "A mysterious key, might be used to unlock the front door", 0, 1, True)
-    ]
-    
-    garage.items = [
-        Item("Rusty Broken Wrench", "Useless junk", 0, 1)
-    ]
-    
-    study.items = [
-        Item("Laptop", "A high-end business laptop", 2100, 2),
-        Item("Backpack", "A worthless bag. Might be be useful for extra space", 0, 0,),
-        Item("Pencil Case", "Just ordinary pencils", 0, 1)
-    ]
     
     # Add containers with hidden items
     bedroom2.containers = {
@@ -740,16 +755,16 @@ def create_world(): # Done by Shlok and Adish
     }
 
     basement.containers = {
-        "ancient statue": [],
-        "broken bricks": [Item("Red Rune", "...", 0, 1, True)],
-        "dusty corner": [Item("Blue Rune", "...", 0, 1, True)],
-        "wooden crate": [Item("Sword", "...", 0, 2, True)],
+        "ancient statue": [Item("Golden Key", "Might be the real key to unlock the front door", 0, 1, True, True)],
+        "broken bricks": [Item("Red Rune", "A glowing red rune", 0, 1, True)],
+        "dusty corner": [Item("Blue Rune", "A glowing blue rune", 0, 1, True)],
+        "wooden crate": [Item("Sword", "An ancient-looking sword", 0, 2, True)],
         "cracked wall": [],  # Only this wall exists initially
         "hidden alcove": []
         }
     
     master_bedroom.containers = {
-        "bedside table (inside)": [],
+        "bedside table inside": [],
         "mirror": [],
         "wardrobe": [Item("Mini Safe", "A small safe needing a 4-digit code", 0, 0, False, False)]
     }
@@ -794,14 +809,6 @@ def create_world(): # Done by Shlok and Adish
     # Special items
     master_bedroom.items = [
         Item("Diamond Necklace", "A sparkling necklace (in safe)", 7000, 1, False, True)
-    ]
-
-    basement.items = [
-        Item("Ancient Statue", "A mysterious statue with outstretched hands", 0, 0, False),
-        Item("Red Rune", "A glowing red rune", 0, 1, True),
-        Item("Blue Rune", "A glowing blue rune", 0, 1, True),
-        Item("Sword", "An ancient-looking sword", 0, 2, True),
-        Item("Golden Key", "Might be the real key to unlock the front door", 0, 1, True, True)
     ]
     
     return bedroom2  # Starting room
@@ -881,4 +888,3 @@ def play(): # Done by Rajat, Shlok and Adish
 
 if __name__ == "__main__": 
     play()
-    
